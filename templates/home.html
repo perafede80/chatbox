@@ -1,0 +1,91 @@
+{% include 'layout.html' %}
+
+<div class="container mt-5">
+  <h3>
+    Add input to chat with personal chatbot
+  </h3>
+
+  <div>
+    <div class="card text-center mt-3">
+      <div class="card-header">
+        Chat History:
+      </div>
+      <div class="card-body chat-history" id="chatHistory">
+        <!-- auto populate here -->
+        {% for response in chat_responses %}
+
+          <div class="{{ 'chat-message user-input' if loop.index0 is even else 'chat-message ai-response' }}">
+            {{ response }}
+          </div>
+        {% endfor %}
+
+      </div>
+    </div>
+  </div>
+
+  <div class="container" id="footer">
+    <div class="input-group mb-3">
+      <input class="form-control" placeholder="Add input here" id="userInput">
+      <button class="btn btn-outline-primary" type="button" id="sendButton">Send</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+    let websocketString = '';
+    if (window.location.hostname === '127.0.0.1') {
+      websocketString = "ws://localhost:8000/ws";
+    } else {
+      websocketString=`wss://${window.location.hostname}/ws`
+    }
+    // Create WebSocket connection.
+    const socket = new WebSocket(websocketString);
+
+    const sendButton = document.getElementById("sendButton");
+    const userInput = document.getElementById("userInput");
+    const chatHistory = document.getElementById("chatHistory");
+    let lastUserMessageDiv = null; // Keep track of the last user message div
+
+    // Listen for messages
+    socket.addEventListener("message", (event) => {
+      let message = event.data.trim();
+
+      let shouldAddSpace = true;
+      let noPrependSpaceChars = [',', '.', '!', '?', ';', ':', "'"];
+
+      if (noPrependSpaceChars.includes(message.charAt(0))) {
+          shouldAddSpace = false;
+      }
+
+      textMessage = (shouldAddSpace ? " " : "") + message;
+      for (let char of textMessage) {
+        lastUserMessageDiv.textContent += char;
+      }
+
+      console.log(lastUserMessageDiv.innerText);
+
+    });
+
+  sendButton.onclick = function() {
+    let message = userInput.value.trim();
+    if (message.length) {
+      let userInputDiv = document.createElement("div");
+      userInputDiv.className = "chat-message user-input"; // Use user-input class for user messages
+      userInputDiv.textContent = message;
+      chatHistory.appendChild(userInputDiv);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+
+      socket.send(message);
+      userInput.value = "";
+
+      // creating a new div for displaying the response from the api
+      let messageDiv = document.createElement("div");
+      messageDiv.className = "chat-message ai-response"; // Assign class for styling
+      messageDiv.textContent = " ";
+      chatHistory.appendChild(messageDiv);
+      lastUserMessageDiv = messageDiv; // Update the reference to the last message div
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+  };
+</script>
